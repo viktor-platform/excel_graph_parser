@@ -30,7 +30,7 @@ dev = [
 "Bug Reports" = "https://github.com/viktor-platform/excel_graph_parser/issues"
 
 [tool.setuptools]
-packages = ["excel_gaph_parser"]
+packages = ["excel_graph_parser"]
 package-data = {"excel_graph_parser" = ["*.jinja"]}
 
 [build-system]
