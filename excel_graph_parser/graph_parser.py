@@ -45,15 +45,16 @@ class ExcelImageParser:
         ws_input = wb["viktor-input-sheet"]
         inputs = []
         for index, row in enumerate(ws_input.iter_rows(min_row=2, max_col=4)):
-            inputs.append(
-                {
-                    "name": row[0].value,
-                    "unit": row[1].value if row[1].value else "",
-                    "description": row[2].value,
-                    "default": row[3].value,
-                    "key": f"input_{index}",
-                }
-            )
+            if row[0].value:
+                inputs.append(
+                    {
+                        "name": row[0].value,
+                        "unit": row[1].value if row[1].value else "",
+                        "description": row[2].value,
+                        "default": row[3].value,
+                        "key": f"input_{index}",
+                    }
+                )
         return inputs
 
     def get_evaluated_spreadsheet(self):

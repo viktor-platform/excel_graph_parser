@@ -23,6 +23,10 @@ None.
 ### Internal
 None.
 
+## v0.1.1 (01/03/2024)
+### Added
+- Check for empty inputs
+
 ## v0.1.0 (13/02/2024)
 ### Added
 - Initial publish
