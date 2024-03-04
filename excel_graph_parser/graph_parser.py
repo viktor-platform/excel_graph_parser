@@ -92,11 +92,13 @@ class ExcelImageParser:
         return evaluated_workbook, result
 
     def get_outputs(self) -> List[Dict]:
-        """Gets outputs from the excel file as a dict"""
+        """Gets outputs from the excel file as a dict (will return empty if no outputs are present in sheet)"""
         wb, result = self.get_evaluated_spreadsheet()
         values = result.values
         ws_output = wb["viktor-output-sheet"]
         outputs = []
+        if not values:
+            return outputs
         for index, row in enumerate(ws_output.iter_rows(min_row=2, max_col=4)):
             name = row[0].value
             unit = row[1].value if row[1].value else ""
@@ -172,6 +174,8 @@ class ExcelImageParser:
                     for sub_element in element:
                         if type(sub_element) == Cell:
                             cat_data.append(sub_element.value)
+
+                chart_sheet_name = input_val_range.replace('(', '').replace(')', '').replace("'", "").split(sep="!")[0]
 
                 chart_val_range = input_val_range.replace('(', '').replace(')', '').replace("'", "").replace(f"{chart_sheet_name}!", "")
                 chart_val_range = chart_val_range.split(",")[0] + ":" + chart_val_range.split(",")[-1] if "," in chart_val_range else chart_val_range

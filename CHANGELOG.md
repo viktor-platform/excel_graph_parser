@@ -23,6 +23,11 @@ None.
 ### Internal
 None.
 
+## v0.1.2 (04/03/2024)
+### Changed
+- Accommodate for sheet without outputs
+- Accommodate for category and data for single figure coming from different sheets in excel file
+
 ## v0.1.1 (01/03/2024)
 ### Added
 - Check for empty inputs
