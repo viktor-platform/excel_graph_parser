@@ -23,6 +23,10 @@ None.
 ### Internal
 None.
 
+## v0.1.4 (05/03/2024)
+### Removed
+- Removed redundant dependencies (from build)
+
 ## v0.1.3 (05/03/2024)
 ### Removed
 - Removed redundant dependencies
