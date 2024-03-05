@@ -23,6 +23,10 @@ None.
 ### Internal
 None.
 
+## v0.1.3 (05/03/2024)
+### Removed
+- Removed redundant dependencies
+
 ## v0.1.2 (04/03/2024)
 ### Changed
 - Accommodate for sheet without outputs
