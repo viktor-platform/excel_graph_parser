@@ -103,10 +103,11 @@ class ExcelImageParser:
             name = row[0].value
             unit = row[1].value if row[1].value else ""
             description = row[2].value
-            outputs.append(
-                {"name": name, "unit": unit, "description": description, "key": f"output_{index}",
-                 "value": values[row[0].value]}
-            )
+            if name:
+                outputs.append(
+                    {"name": name, "unit": unit, "description": description, "key": f"output_{index}",
+                     "value": values[row[0].value]}
+                )
         return outputs
 
     def get_figures_from_excel_file(self) -> list:

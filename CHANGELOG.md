@@ -23,6 +23,10 @@ None.
 ### Internal
 None.
 
+## v0.1.5 (06/03/2024)
+### Changed
+- Exclude output fields with no values
+
 ## v0.1.4 (05/03/2024)
 ### Removed
 - Removed redundant dependencies (from build)
@@ -42,4 +46,4 @@ None.
 
 ## v0.1.0 (13/02/2024)
 ### Added
-- Initial publish
+- Initial publishg
