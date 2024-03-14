@@ -119,8 +119,10 @@ class ExcelImageParser:
         for i, chart in enumerate(self.charts):
             # Get the general chart elements
             series = []
-            chart_title = ''.join([title_element.t for title_element in chart.title.tx.rich.p[0].r])
-            chart_title = f"Untitled Chart {i}" if chart_title == "" else chart_title
+            if chart.title:
+                chart_title = ''.join([title_element.t for title_element in chart.title.tx.rich.p[0].r])
+            else:
+                chart_title = f"Untitled Chart {i}"
             chart_type = chart.tagname
             if chart_type not in ALLOWED_FIGURE_TYPES:
                 UserMessage.warning(f"Chart titled {chart_title} is not of one of the allowed types and can not be visualised")
@@ -231,8 +233,10 @@ class ExcelImageParser:
 
         for i, chart in enumerate(self.charts):
             # Get the chart titles
-            chart_title = ''.join([title_element.t for title_element in chart.title.tx.rich.p[0].r])
-            chart_title = f"Untitled Chart {i}" if chart_title == "" else chart_title
+            if chart.title:
+                chart_title = ''.join([title_element.t for title_element in chart.title.tx.rich.p[0].r])
+            else:
+                chart_title = f"Untitled Chart {i}"
             clean_name = [s.lower() for s in chart_title.replace(" ", "_") if s.isalnum() or s == "_"]
             figure_name = "".join(clean_name)
             figure_list.append(

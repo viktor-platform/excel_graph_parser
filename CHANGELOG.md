@@ -23,6 +23,10 @@ None.
 ### Internal
 None.
 
+## v0.1.6 (14/03/2024)
+### Fixed
+- Catch unnamed figures
+
 ## v0.1.5 (06/03/2024)
 ### Changed
 - Exclude output fields with no values
@@ -46,4 +50,4 @@ None.
 
 ## v0.1.0 (13/02/2024)
 ### Added
-- Initial publishg
+- Initial publish
