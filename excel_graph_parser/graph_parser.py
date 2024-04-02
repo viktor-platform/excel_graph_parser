@@ -106,7 +106,7 @@ class ExcelImageParser:
             if name:
                 outputs.append(
                     {"name": name, "unit": unit, "description": description, "key": f"output_{index}",
-                     "value": values[row[0].value]}
+                     "value": values[row[0].value], "type": str(type(values[row[0].value]))}
                 )
         return outputs
 
@@ -239,10 +239,12 @@ class ExcelImageParser:
                 chart_title = f"Untitled Chart {i}"
             clean_name = [s.lower() for s in chart_title.replace(" ", "_") if s.isalnum() or s == "_"]
             figure_name = "".join(clean_name)
+            figure_type = chart.tagname
             figure_list.append(
                 {
                     "name": chart_title,
-                    "concat_name": figure_name
+                    "concat_name": figure_name,
+                    "type": figure_type,
                 }
             )
 

@@ -23,6 +23,11 @@ None.
 ### Internal
 None.
 
+## v0.1.7 (02/04/2024)
+### Fixed
+- Add output type
+- Add figure type to titles
+
 ## v0.1.6 (14/03/2024)
 ### Fixed
 - Catch unnamed figures
