@@ -137,36 +137,33 @@ class ExcelImageParser:
             # Get series data
             for i, serie in enumerate(chart.series):
                 if chart_type == "scatterChart":
-                    try:
-                        input_cat_range = serie.xVal.strRef.f
-                        input_cat_format = None
-                    except AttributeError:
-                        input_cat_range = serie.xVal.numRef.f
-                        input_cat_format = serie.xVal.numRef.numCache.formatCode
-                        input_cat_format = None if input_cat_format == "General" else input_cat_format
-                    try:
-                        input_val_range = serie.yVal.strRef.f
-                        input_val_format = None
-                    except AttributeError:
-                        input_val_range = serie.yVal.numRef.f
-                        input_val_format = serie.yVal.numRef.numCache.formatCode
-                        input_val_format = None if input_val_format == "General" else input_val_format
+                    if serie.xVal:
+                        if serie.xVal.strRef:
+                            input_cat_range = serie.xVal.strRef.f
+                            input_cat_format = None
+                        elif serie.xVal.numRef:
+                            input_cat_range = serie.xVal.numRef.f
+                            input_cat_format = serie.xVal.numRef.numCache.formatCode
+                            input_cat_format = None if input_cat_format == "General" else input_cat_format
+
+                    input_val_range = serie.yVal.numRef.f
+                    input_val_format = serie.yVal.numRef.numCache.formatCode
+                    input_val_format = None if input_val_format == "General" else input_val_format
 
                 else:
-                    try:
-                        input_cat_range = serie.cat.strRef.f
-                        input_cat_format = None
-                    except AttributeError:
-                        input_cat_range = serie.cat.numRef.f
-                        input_cat_format = serie.cat.numRef.numCache.formatCode
-                        input_cat_format = None if input_cat_format == "General" else input_cat_format
-                    try:
-                        input_val_range = serie.val.strRef.f
-                        input_val_format = None
-                    except AttributeError:
-                        input_val_range = serie.val.numRef.f
-                        input_val_format = serie.val.numRef.numCache.formatCode
-                        input_val_format = None if input_val_format == "General" else input_val_format
+                    if serie.cat:
+                        # if no category data in the sequence, use the one that was set for the previous sequence
+                        if serie.cat.strRef:
+                            input_cat_range = serie.cat.strRef.f
+                            input_cat_format = None
+                        elif serie.cat.numRef:
+                            input_cat_range = serie.cat.numRef.f
+                            input_cat_format = serie.cat.numRef.numCache.formatCode
+                            input_cat_format = None if input_cat_format == "General" else input_cat_format
+
+                    input_val_range = serie.val.numRef.f
+                    input_val_format = serie.val.numRef.numCache.formatCode
+                    input_val_format = None if input_val_format == "General" else input_val_format
 
                 chart_sheet_name = input_cat_range.replace('(', '').replace(')', '').replace("'", "").split(sep="!")[0]
 
