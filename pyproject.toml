@@ -1,9 +1,9 @@
 [project]
 name = "excel_graph_parser"
-version = "0.1.8"
+version = "0.1.9"
 description = "Parser to translate excel graphs to Plotly figures"
 readme = "README.md"
-requires-python = ">=3.7"
+requires-python = ">=3.8"
 license = {file = "LICENSE"}
 authors = [
     {name = "D. Sommers", email = "dsommers@viktor.ai" }

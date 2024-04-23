@@ -23,6 +23,10 @@ None.
 ### Internal
 None.
 
+## v0.1.9 (23/04/2024)
+### Changed
+- Updated VIKTOR dependency
+
 ## v0.1.8 (15/04/2024)
 ### Fixed
 - Allow for multiple traces using the same category data

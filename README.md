@@ -5,7 +5,7 @@ Currently only useful for [VIKTOR](https://www.viktor.ai) applications.
 # Installation
 Paste the link of this repository in your `requirements.txt`:
 ```text
-viktor==14.7.0
+viktor==14.9.0
 excel-graph-parser
 ```
 
