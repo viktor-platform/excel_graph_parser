@@ -3,7 +3,7 @@ All notable changes to this project will be documented in this file.
 
 ## (Unreleased) (dd/mm/yyyy)
 ### Added
-None.
+- Instantiate the parser from a VIKTOR SpreadsheetCalculation instead of a path + params
 
 ### Changed
 None.
