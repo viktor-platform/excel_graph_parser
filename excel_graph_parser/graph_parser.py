@@ -40,15 +40,13 @@ class ExcelImageParser:
 
         # Gather charts by looping through sheets
         self._charts_map = {}
-        untitled_index = 1
         for sheet_name in sheet_names:
             sheet = self.workbook[sheet_name]
             for chart in sheet._charts:  # could be empty
                 if chart.title:
                     chart_title = ''.join([title_element.t for title_element in chart.title.tx.rich.p[0].r])
                 else:
-                    chart_title = f"Untitled {untitled_index}"
-                    untitled_index += 1
+                    chart_title = f"Untitled Chart {len(self._charts_map)}"
 
                 self._charts_map[chart_title] = chart
 
