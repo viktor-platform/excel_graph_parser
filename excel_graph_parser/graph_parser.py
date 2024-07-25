@@ -39,9 +39,7 @@ class ExcelImageParser:
         sheet_names = self.workbook.sheetnames
 
         # Gather charts by looping through sheets
-        self.charts = []
         self._charts_map = {}
-
         untitled_index = 1
         for sheet_name in sheet_names:
             sheet = self.workbook[sheet_name]
@@ -53,7 +51,6 @@ class ExcelImageParser:
                     untitled_index += 1
 
                 self._charts_map[chart_title] = chart
-                self.charts.append(chart)
 
     def validate_sheet_names(self):
         """Validate that the input sheet and output sheets are present"""
