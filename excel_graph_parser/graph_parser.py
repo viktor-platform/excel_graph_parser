@@ -225,6 +225,13 @@ class ExcelImageParser:
 
         return figures
 
+    def get_plotly_figure_by_title(self, title: str) -> go.Figure:
+        figures = self.get_figures_from_excel_file()
+        for figure in figures:
+            if figure["fig"].layout.title.text == title:
+                return figure["fig"]
+        raise UserError(f"No figure found with title: {title}")
+
     def validate_sheet_names(self):
         """Validate that the input sheet and output sheets are present"""
         wb = self.workbook
