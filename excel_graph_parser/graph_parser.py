@@ -1,9 +1,10 @@
 from io import BytesIO
 from pathlib import Path
-from typing import List, Union
+from typing import List, Union, Optional
 
 from openpyxl import load_workbook
 from openpyxl.cell import Cell
+from openpyxl.workbook import Workbook
 from viktor import UserError, UserMessage, File
 from viktor.errors import InputViolation
 from viktor.external.spreadsheet import SpreadsheetCalculationInput, SpreadsheetCalculation
@@ -39,10 +40,31 @@ class ExcelImageParser:
 
         # Gather charts by looping through sheets
         self.charts = []
+        self._charts_map = {}
+
+        untitled_index = 1
         for sheet_name in sheet_names:
             sheet = self.workbook[sheet_name]
             for chart in sheet._charts:  # could be empty
+                if chart.title:
+                    chart_title = ''.join([title_element.t for title_element in chart.title.tx.rich.p[0].r])
+                else:
+                    chart_title = f"Untitled {untitled_index}"
+                    untitled_index += 1
+
+                self._charts_map[chart_title] = chart
                 self.charts.append(chart)
+
+    def validate_sheet_names(self):
+        """Validate that the input sheet and output sheets are present"""
+        wb = self.workbook
+        if not all(sheetname in wb for sheetname in ["viktor-input-sheet", "viktor-output-sheet"]):
+            raise UserError(
+                "The sheet names are not correctly formatted.",
+                input_violations=[
+                    InputViolation(message="Please check the sheet and follow the documentation", fields=["excel_file"])
+                ],
+            )
 
     def get_input_cells(self) -> List[dict]:
         """Gets inputs from the excel file as a dict"""
@@ -125,134 +147,35 @@ class ExcelImageParser:
 
     def get_figures_from_excel_file(self) -> list:
         """Gets figures from the excel file as a list"""
-
         wb, _ = self.get_evaluated_spreadsheet()
+
         figures = []
-
-        for i, chart in enumerate(self.charts):
-            # Get the general chart elements
-            series = []
-            if chart.title:
-                chart_title = ''.join([title_element.t for title_element in chart.title.tx.rich.p[0].r])
-            else:
-                chart_title = f"Untitled Chart {i}"
-            chart_type = chart.tagname
-            if chart_type not in ALLOWED_FIGURE_TYPES:
-                UserMessage.warning(f"Chart titled {chart_title} is not of one of the allowed types and can not be visualised")
+        for chart_title in self._charts_map:
+            chart_data = self._parse_chart_data(chart_title, wb)
+            if chart_data is None:
                 continue
-            x_axis_title, y_axis_title = None, None
-            if chart_type != "pieChart":
-                if chart.x_axis.title:
-                    x_axis_title = chart.x_axis.title.tx.rich.p[0].r[-1].t
-                if chart.y_axis.title:
-                    y_axis_title = chart.y_axis.title.tx.rich.p[0].r[-1].t
+            chart_data['fig'] = self._create_plotly_figure(chart_data)
+            figures.append(chart_data)
 
-            # Get series data
-            for i, serie in enumerate(chart.series):
-                if chart_type == "scatterChart":
-                    if serie.xVal:
-                        if serie.xVal.strRef:
-                            input_cat_range = serie.xVal.strRef.f
-                            input_cat_format = None
-                        elif serie.xVal.numRef:
-                            input_cat_range = serie.xVal.numRef.f
-                            input_cat_format = serie.xVal.numRef.numCache.formatCode
-                            input_cat_format = None if input_cat_format == "General" else input_cat_format
-
-                    input_val_range = serie.yVal.numRef.f
-                    input_val_format = serie.yVal.numRef.numCache.formatCode
-                    input_val_format = None if input_val_format == "General" else input_val_format
-
-                else:
-                    if serie.cat:
-                        # if no category data in the sequence, use the one that was set for the previous sequence
-                        if serie.cat.strRef:
-                            input_cat_range = serie.cat.strRef.f
-                            input_cat_format = None
-                        elif serie.cat.numRef:
-                            input_cat_range = serie.cat.numRef.f
-                            input_cat_format = serie.cat.numRef.numCache.formatCode
-                            input_cat_format = None if input_cat_format == "General" else input_cat_format
-
-                    input_val_range = serie.val.numRef.f
-                    input_val_format = serie.val.numRef.numCache.formatCode
-                    input_val_format = None if input_val_format == "General" else input_val_format
-
-                chart_sheet_name = input_cat_range.replace('(', '').replace(')', '').replace("'", "").split(sep="!")[0]
-
-                chart_cat_range = input_cat_range.replace('(', '').replace(')', '').replace("'", "").replace(f"{chart_sheet_name}!", "").replace('$', "")
-                chart_cat_range = chart_cat_range.split(",")[0] + ":" + chart_cat_range.split(",")[-1] if "," in chart_cat_range else chart_cat_range
-                cat_data = []
-                for element in wb[chart_sheet_name][chart_cat_range]:
-                    for sub_element in element:
-                        if type(sub_element) == Cell:
-                            cat_data.append(sub_element.value)
-
-                chart_sheet_name = input_val_range.replace('(', '').replace(')', '').replace("'", "").split(sep="!")[0]
-
-                chart_val_range = input_val_range.replace('(', '').replace(')', '').replace("'", "").replace(f"{chart_sheet_name}!", "")
-                chart_val_range = chart_val_range.split(",")[0] + ":" + chart_val_range.split(",")[-1] if "," in chart_val_range else chart_val_range
-                val_data = []
-                for element in wb[chart_sheet_name][chart_val_range]:
-                    for sub_element in element:
-                        if type(sub_element) == Cell:
-                            val_data.append(sub_element.value)
-                series_name = serie.tx.v if serie.tx else None
-
-                ser = {
-                    "category_axis_data": cat_data,
-                    "value_axis_data": val_data,
-                    "category_value_format": input_cat_format,
-                    "values_value_format": input_val_format,
-                    "series_name": series_name if series_name else None
-                }
-                series.append(ser)
-
-            # Generate the figures
-            chart_data = {
-                "chart_title": chart_title,
-                "chart_type": chart_type,
-                "x_axis_title": x_axis_title,
-                "y_axis_title": y_axis_title,
-                "series": series,
-            }
-
-            figure_data = self._create_plotly_figure(chart_data)
-            figures.append(figure_data)
-
-        # Close the workbook
         wb.close()
-
         return figures
 
     def get_plotly_figure_by_title(self, title: str) -> go.Figure:
-        figures = self.get_figures_from_excel_file()
-        for figure in figures:
-            if figure["fig"].layout.title.text == title:
-                return figure["fig"]
-        raise UserError(f"No figure found with title: {title}")
+        """Gets plotly figure by title"""
+        wb, _ = self.get_evaluated_spreadsheet()
+        chart_data = self._parse_chart_data(title, wb)
+        wb.close()
 
-    def validate_sheet_names(self):
-        """Validate that the input sheet and output sheets are present"""
-        wb = self.workbook
-        if not all(sheetname in wb for sheetname in ["viktor-input-sheet", "viktor-output-sheet"]):
-            raise UserError(
-                "The sheet names are not correctly formatted.",
-                input_violations=[
-                    InputViolation(message="Please check the sheet and follow the documentation", fields=["excel_file"])
-                ],
-            )
+        if chart_data is None:
+            raise UserError(f"No figure found with title: {title}")
+
+        return self._create_plotly_figure(chart_data)
 
     def get_figure_titles(self) -> List[dict]:
         """Generate dict with all the names of each figure to include in app template"""
         figure_list = []
 
-        for i, chart in enumerate(self.charts):
-            # Get the chart titles
-            if chart.title:
-                chart_title = ''.join([title_element.t for title_element in chart.title.tx.rich.p[0].r])
-            else:
-                chart_title = f"Untitled Chart {i}"
+        for chart_title, chart in self._charts_map.items():
             clean_name = [s.lower() for s in chart_title.replace(" ", "_") if s.isalnum() or s == "_"]
             figure_name = "".join(clean_name)
             figure_type = chart.tagname
@@ -266,8 +189,123 @@ class ExcelImageParser:
 
         return figure_list
 
+    def _parse_chart_data(self, chart_title: str, wb: Workbook) -> Optional[dict]:
+        """Extracts chart data from the provided workbook"""
+        chart = self._charts_map[chart_title]
+
+        # Get the general chart elements
+        series = []
+        chart_type = chart.tagname
+        if chart_type not in ALLOWED_FIGURE_TYPES:
+            UserMessage.warning(
+                f"Chart titled '{chart_title}' is not of one of the allowed types and can not be visualised"
+            )
+            return None
+
+        x_axis_title, y_axis_title = None, None
+        if chart_type != "pieChart":
+            if chart.x_axis.title:
+                x_axis_title = chart.x_axis.title.tx.rich.p[0].r[-1].t
+            if chart.y_axis.title:
+                y_axis_title = chart.y_axis.title.tx.rich.p[0].r[-1].t
+
+        # Get series data
+        input_cat_range = ""
+        input_cat_format = None
+        for i, series in enumerate(chart.series):
+            if chart_type == "scatterChart":
+                if series.xVal:
+                    if series.xVal.strRef:
+                        input_cat_range = series.xVal.strRef.f
+                    elif series.xVal.numRef:
+                        input_cat_range = series.xVal.numRef.f
+                        input_cat_format = series.xVal.numRef.numCache.formatCode
+
+                input_val_range = series.yVal.numRef.f
+                input_val_format = series.yVal.numRef.numCache.formatCode
+
+            else:
+                if series.cat:
+                    # if no category data in the sequence, use the one that was set for the previous sequence
+                    if series.cat.strRef:
+                        input_cat_range = series.cat.strRef.f
+                    elif series.cat.numRef:
+                        input_cat_range = series.cat.numRef.f
+                        input_cat_format = series.cat.numRef.numCache.formatCode
+
+                input_val_range = series.val.numRef.f
+                input_val_format = series.val.numRef.numCache.formatCode
+
+            input_cat_format = None if input_cat_format == "General" else input_cat_format
+            input_val_format = None if input_val_format == "General" else input_val_format
+
+            # category_axis_data
+            chart_sheet_name = (
+                input_cat_range
+                .replace("(", "")
+                .replace(")", "")
+                .replace("'", "")
+                .split(sep="!")[0]
+            )
+            chart_cat_range = (
+                input_cat_range
+                .replace('(', '')
+                .replace(')', '')
+                .replace("'", "")
+                .replace(f"{chart_sheet_name}!", "")
+                .replace('$', "")
+            )
+            chart_cat_range = chart_cat_range.split(",")[0] + ":" + chart_cat_range.split(",")[-1] if "," in chart_cat_range else chart_cat_range
+            cat_data = []
+            for element in wb[chart_sheet_name][chart_cat_range]:
+                for sub_element in element:
+                    if type(sub_element) == Cell:
+                        cat_data.append(sub_element.value)
+
+            # value_axis_data
+            chart_sheet_name = (
+                input_val_range
+                .replace('(', '')
+                .replace(')', '')
+                .replace("'", "")
+                .split(sep="!")[0]
+            )
+            chart_val_range = (
+                input_val_range
+                .replace('(', '')
+                .replace(')', '')
+                .replace("'", "")
+                .replace(f"{chart_sheet_name}!", "")
+            )
+            chart_val_range = chart_val_range.split(",")[0] + ":" + chart_val_range.split(",")[-1] if "," in chart_val_range else chart_val_range
+            val_data = []
+            for element in wb[chart_sheet_name][chart_val_range]:
+                for sub_element in element:
+                    if type(sub_element) == Cell:
+                        val_data.append(sub_element.value)
+
+            series_name = series.tx.v if series.tx else None
+            ser = {
+                "category_axis_data": cat_data,
+                "value_axis_data": val_data,
+                "category_value_format": input_cat_format,
+                "values_value_format": input_val_format,
+                "series_name": series_name if series_name else None
+            }
+            series.append(ser)
+
+        chart_data = {
+            "chart_title": chart_title,
+            "chart_type": chart_type,
+            "x_axis_title": x_axis_title,
+            "y_axis_title": y_axis_title,
+            "series": series,
+        }
+
+        return chart_data
+
     @staticmethod
-    def _create_plotly_figure(chart_data: dict) -> dict:
+    def _create_plotly_figure(chart_data: dict) -> go.Figure:
         """Creates plotly figure based on the extracted chart data"""
         fig = go.Figure()
         if chart_data["chart_type"] == "lineChart":
@@ -307,5 +345,4 @@ class ExcelImageParser:
                 xaxis_tickformat=chart_data["series"][0]["category_value_format"],
             )
 
-        chart_data["fig"] = fig
-        return chart_data
+        return fig
