@@ -1,12 +1,10 @@
-import os
 from io import BytesIO
 from pathlib import Path
-from typing import List, Dict, Union
+from typing import List, Union
 
-from munch import Munch
-from openpyxl import load_workbook
+from openpyxl import load_workbook, Workbook
 from openpyxl.cell import Cell
-from viktor import UserError, UserMessage
+from viktor import UserError, UserMessage, File
 from viktor.errors import InputViolation
 from viktor.external.spreadsheet import SpreadsheetCalculationInput, SpreadsheetCalculation
 
@@ -16,30 +14,37 @@ ALLOWED_FIGURE_TYPES = ["lineChart", "scatterChart", "barChart", "pieChart"]
 
 
 class ExcelImageParser:
-    def __init__(self, excel_file_path: Union[Path, str], params: Munch, from_app: bool = False):
-        self.workbook = load_workbook(filename=excel_file_path, data_only=True)
-        self.params = params
+    def __init__(self, excel_file_path: Union[Path, str] = None, params: dict = None, from_app: bool = False,
+                 *, spreadsheet_calculation: SpreadsheetCalculation = None):
+
+        if spreadsheet_calculation is not None:
+            file = spreadsheet_calculation._file
+            if isinstance(file, File):
+                with file.open_binary() as r:
+                    self.workbook = load_workbook(filename=r, data_only=True)
+            elif isinstance(file, BytesIO):
+                self.workbook = load_workbook(filename=file, data_only=True)
+            else:
+                raise NotImplementedError
+        else:
+            self.workbook = load_workbook(filename=excel_file_path, data_only=True)
+
         self.excel_file_path = excel_file_path
+        self.params = params
         self.from_app = from_app
+        self._spreadsheet_calculation = spreadsheet_calculation
 
         # Add exit point name to dataframe
         sheet_names = self.workbook.sheetnames
 
-        # Loop through sheets
-        self.sheets = []
+        # Gather charts by looping through sheets
         self.charts = []
-
         for sheet_name in sheet_names:
-            self.sheets.append(self.workbook[sheet_name])
+            sheet = self.workbook[sheet_name]
+            for chart in sheet._charts:  # could be empty
+                self.charts.append(chart)
 
-        for sheet in self.sheets:
-            # Check if there are charts in the sheet
-            if sheet._charts:
-                # Loop through each chart in the sheet
-                for chart in sheet._charts:
-                    self.charts.append(chart)
-
-    def get_input_cells(self) -> List[Dict]:
+    def get_input_cells(self) -> List[dict]:
         """Gets inputs from the excel file as a dict"""
         wb = self.workbook
         ws_input = wb["viktor-input-sheet"]
@@ -60,38 +65,43 @@ class ExcelImageParser:
     def get_evaluated_spreadsheet(self):
         """Evaluate spreadsheet so the version with the updated inputs and outputs is available"""
         inputs = []
-        input_cells = self.get_input_cells()
 
-        # Check whether the user wrongfully adjusted the inputs table
-        if not self.from_app:
-            if len(input_cells) != len(self.params.preview_step.fields_table):
-                raise UserError(
-                    "Please do not add or delete rows from the input table, go back to the previous step and re-process"
-                    " the uploaded file"
-                )
-
-        # Load spreadsheet with correct inputs
-        if not self.from_app:
-            for (row, input_cell) in zip(self.params.preview_step.fields_table, input_cells):
-                field_name = input_cell["name"]
-                value = row["values"]
-                inputs.append(SpreadsheetCalculationInput(field_name, value))
-
-            spreadsheet = SpreadsheetCalculation(self.params.upload_step.excel_file.file, inputs)
-
+        if self._spreadsheet_calculation is not None:
+            spreadsheet = self._spreadsheet_calculation
         else:
-            for input_cell in input_cells:
-                field_name = input_cell["name"]
-                value = self.params[input_cell["key"]]
-                inputs.append(SpreadsheetCalculationInput(field_name, value))
+            input_cells = self.get_input_cells()
 
-            spreadsheet = SpreadsheetCalculation.from_path(self.excel_file_path, inputs)
+            # Check whether the user wrongfully adjusted the inputs table
+            if not self.from_app:
+                if len(input_cells) != len(self.params.preview_step.fields_table):
+                    raise UserError(
+                        "Please do not add or delete rows from the input table, go back to the previous step and re-process"
+                        " the uploaded file"
+                    )
+
+            # Load spreadsheet with correct inputs
+            if not self.from_app:
+                for (row, input_cell) in zip(self.params.preview_step.fields_table, input_cells):
+                    field_name = input_cell["name"]
+                    value = row["values"]
+                    inputs.append(SpreadsheetCalculationInput(field_name, value))
+
+                spreadsheet = SpreadsheetCalculation(self.params.upload_step.excel_file.file, inputs)
+
+            else:
+                for input_cell in input_cells:
+                    field_name = input_cell["name"]
+                    value = self.params[input_cell["key"]]
+                    inputs.append(SpreadsheetCalculationInput(field_name, value))
+
+                spreadsheet = SpreadsheetCalculation.from_path(self.excel_file_path, inputs)
+
         result = spreadsheet.evaluate(include_filled_file=True)
         evaluated_workbook = load_workbook(BytesIO(result.file_content), data_only=True)
 
         return evaluated_workbook, result
 
-    def get_outputs(self) -> List[Dict]:
+    def get_outputs(self) -> List[dict]:
         """Gets outputs from the excel file as a dict (will return empty if no outputs are present in sheet)"""
         wb, result = self.get_evaluated_spreadsheet()
         values = result.values
@@ -100,13 +110,16 @@ class ExcelImageParser:
         if not values:
             return outputs
         for index, row in enumerate(ws_output.iter_rows(min_row=2, max_col=4)):
-            name = row[0].value
-            unit = row[1].value if row[1].value else ""
-            description = row[2].value
-            if name:
+            if row[0].value:
                 outputs.append(
-                    {"name": name, "unit": unit, "description": description, "key": f"output_{index}",
-                     "value": values[row[0].value], "type": str(type(values[row[0].value]))}
+                    {
+                        "name": row[0].value,
+                        "unit": row[1].value if row[1].value else "",
+                        "description": row[2].value,
+                        "key": f"output_{index}",
+                        "value": values[row[0].value],
+                        "type": str(type(values[row[0].value]))
+                    }
                 )
         return outputs
 
@@ -204,7 +217,7 @@ class ExcelImageParser:
                 "series": series,
             }
 
-            figure_data = self.create_ploty_figure(chart_data)
+            figure_data = self._create_plotly_figure(chart_data)
             figures.append(figure_data)
 
         # Close the workbook
@@ -212,11 +225,17 @@ class ExcelImageParser:
 
         return figures
 
+    def get_plotly_figure_by_title(self, title: str, *, wb: Workbook = None) -> go.Figure:
+        figures = self.get_figures_from_excel_file(wb=wb)
+        for figure in figures:
+            if figure["fig"].layout.title.text == "Untitled 1":
+                return figure["fig"]
+        raise UserError(f"No figure found with title: {title}")
+
     def validate_sheet_names(self):
         """Validate that the input sheet and output sheets are present"""
         wb = self.workbook
         if not all(sheetname in wb for sheetname in ["viktor-input-sheet", "viktor-output-sheet"]):
-            os.unlink(self.excel_file_path)
             raise UserError(
                 "The sheet names are not correctly formatted.",
                 input_violations=[
@@ -224,7 +243,7 @@ class ExcelImageParser:
                 ],
             )
 
-    def get_figure_titles(self):
+    def get_figure_titles(self) -> List[dict]:
         """Generate dict with all the names of each figure to include in app template"""
         figure_list = []
 
@@ -248,8 +267,8 @@ class ExcelImageParser:
         return figure_list
 
     @staticmethod
-    def create_ploty_figure(chart_data: dict):
-        """Creates ploty figure based on the extracted chart data"""
+    def _create_plotly_figure(chart_data: dict) -> dict:
+        """Creates plotly figure based on the extracted chart data"""
         fig = go.Figure()
         if chart_data["chart_type"] == "lineChart":
             for ser in chart_data["series"]:
