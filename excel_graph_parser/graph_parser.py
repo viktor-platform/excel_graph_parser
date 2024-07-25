@@ -2,7 +2,7 @@ from io import BytesIO
 from pathlib import Path
 from typing import List, Union
 
-from openpyxl import load_workbook, Workbook
+from openpyxl import load_workbook
 from openpyxl.cell import Cell
 from viktor import UserError, UserMessage, File
 from viktor.errors import InputViolation
@@ -224,13 +224,6 @@ class ExcelImageParser:
         wb.close()
 
         return figures
-
-    def get_plotly_figure_by_title(self, title: str, *, wb: Workbook = None) -> go.Figure:
-        figures = self.get_figures_from_excel_file(wb=wb)
-        for figure in figures:
-            if figure["fig"].layout.title.text == "Untitled 1":
-                return figure["fig"]
-        raise UserError(f"No figure found with title: {title}")
 
     def validate_sheet_names(self):
         """Validate that the input sheet and output sheets are present"""

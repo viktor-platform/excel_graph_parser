@@ -4,7 +4,6 @@ All notable changes to this project will be documented in this file.
 ## (Unreleased) (dd/mm/yyyy)
 ### Added
 - Instantiate the parser from a VIKTOR SpreadsheetCalculation instead of a path + params
-- Get a specific figure by using `get_plotly_figure_by_title`
 
 ### Changed
 None.
