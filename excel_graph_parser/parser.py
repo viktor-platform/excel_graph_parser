@@ -26,7 +26,7 @@ class ExcelChartParser:
 
         spreadsheet = SpreadsheetCalculation(...)
         parser = ExcelChartParser(spreadsheet)
-        fig = parser.get_plotly_figure_by_title("My Chart")
+        fig = parser.get_plotly_figure("My Chart")
 
     """
 
@@ -59,7 +59,7 @@ class ExcelChartParser:
 
                 self._charts_map[chart_title] = chart
 
-    def get_plotly_figure_by_title(self, chart_title: str) -> go.Figure:
+    def get_plotly_figure(self, chart_title: str) -> go.Figure:
         """Gets chart by title and returns it as Plotly figure."""
         if chart_title not in self._charts_map:
             raise ValueError(f"No chart found with title: {chart_title}")
