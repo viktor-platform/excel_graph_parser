@@ -19,7 +19,7 @@ ALLOWED_FIGURE_TYPES = ["lineChart", "scatterChart", "barChart", "pieChart"]
 class ExcelImageParser:
     def __init__(self, excel_file_path: Union[Path, str], params: Munch, from_app: bool = False):
         warnings.warn("ExcelImageParser is deprecated and will be removed in the future. "
-                      "Please make use of SpreadsheetParser instead.", DeprecationWarning)
+                      "Please make use of ExcelChartParser instead.", DeprecationWarning)
 
         self.workbook = load_workbook(filename=excel_file_path, data_only=True)
         self.params = params

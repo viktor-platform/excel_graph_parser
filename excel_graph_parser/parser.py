@@ -7,11 +7,33 @@ from viktor.external.spreadsheet import SpreadsheetCalculation
 
 import plotly.graph_objects as go
 
-ALLOWED_FIGURE_TYPES = ["lineChart", "scatterChart", "barChart", "pieChart"]
+ALLOWED_CHART_TYPES = ["lineChart", "scatterChart", "barChart", "pieChart"]
 
 
-class SpreadsheetParser:
-    def __init__(self, spreadsheet_calculation: SpreadsheetCalculation = None):
+class ExcelChartParser:
+    """ Extract charts from Excel sheets that are converted to a Plotly format.
+
+    Currently, the following chart types are supported:
+
+    - barChart
+    - lineChart
+    - pieChart
+    - scatterChart
+
+    Example usage:
+
+    ... code-block:: python
+
+        spreadsheet = SpreadsheetCalculation(...)
+        parser = ExcelChartParser(spreadsheet)
+        fig = parser.get_plotly_figure_by_title("My Chart")
+
+    """
+
+    def __init__(self, spreadsheet_calculation: SpreadsheetCalculation):
+        """
+        :param spreadsheet_calculation: input spreadsheet.
+        """
         file = spreadsheet_calculation._file
         if isinstance(file, File):
             with file.open_binary() as r:
@@ -37,16 +59,16 @@ class SpreadsheetParser:
 
                 self._charts_map[chart_title] = chart
 
-    def get_plotly_figure_by_title(self, title: str) -> go.Figure:
-        """Gets plotly figure by title"""
-        if title not in self._charts_map:
-            raise ValueError(f"No chart found with title: {title}")
+    def get_plotly_figure_by_title(self, chart_title: str) -> go.Figure:
+        """Gets chart by title and returns it as Plotly figure."""
+        if chart_title not in self._charts_map:
+            raise ValueError(f"No chart found with title: {chart_title}")
 
         spreadsheet = self._spreadsheet_calculation
         result = spreadsheet.evaluate(include_filled_file=False)
         wb = load_workbook(BytesIO(result.file_content), data_only=True)
         try:
-            chart_data = self._parse_chart_data(title, wb)
+            chart_data = self._parse_chart_data(chart_title, wb)
         finally:
             wb.close()
 
@@ -58,9 +80,9 @@ class SpreadsheetParser:
 
         # Get the general chart elements
         chart_type = chart.tagname
-        if chart_type not in ALLOWED_FIGURE_TYPES:
+        if chart_type not in ALLOWED_CHART_TYPES:
             raise TypeError(
-                f"Chart '{chart_title}' (type {chart_type}) cannot be parsed. Allowed types are: {ALLOWED_FIGURE_TYPES}"
+                f"Chart '{chart_title}' (type {chart_type}) cannot be parsed. Allowed types are: {ALLOWED_CHART_TYPES}"
             )
 
         x_axis_title, y_axis_title = None, None

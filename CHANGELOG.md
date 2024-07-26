@@ -3,12 +3,12 @@ All notable changes to this project will be documented in this file.
 
 ## (Unreleased) (dd/mm/yyyy)
 ### Added
-- SpreadsheetParser
+- ExcelChartParser
 
 ### Changed
 
 ### Deprecated
-- ExcelImageParser will be replaced by SpreadsheetParser
+- ExcelImageParser will be replaced by ExcelChartParser
 
 ### Removed
 
