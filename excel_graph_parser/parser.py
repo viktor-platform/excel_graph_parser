@@ -65,7 +65,7 @@ class ExcelChartParser:
             raise ValueError(f"No chart found with title: {chart_title}")
 
         spreadsheet = self._spreadsheet_calculation
-        result = spreadsheet.evaluate(include_filled_file=False)
+        result = spreadsheet.evaluate(include_filled_file=True)
         wb = load_workbook(BytesIO(result.file_content), data_only=True)
         try:
             chart_data = self._parse_chart_data(chart_title, wb)
@@ -94,80 +94,57 @@ class ExcelChartParser:
 
         # Get series data
         series = []
-        input_cat_range = ""
-        input_cat_format = None
-        for i, series in enumerate(chart.series):
+        for serie in chart.series:
             if chart_type == "scatterChart":
-                if series.xVal:
-                    if series.xVal.strRef:
-                        input_cat_range = series.xVal.strRef.f
-                    elif series.xVal.numRef:
-                        input_cat_range = series.xVal.numRef.f
-                        input_cat_format = series.xVal.numRef.numCache.formatCode
+                if serie.xVal:
+                    if serie.xVal.strRef:
+                        input_cat_range = serie.xVal.strRef.f
+                        input_cat_format = None
+                    elif serie.xVal.numRef:
+                        input_cat_range = serie.xVal.numRef.f
+                        input_cat_format = serie.xVal.numRef.numCache.formatCode
+                        input_cat_format = None if input_cat_format == "General" else input_cat_format
 
-                input_val_range = series.yVal.numRef.f
-                input_val_format = series.yVal.numRef.numCache.formatCode
+                input_val_range = serie.yVal.numRef.f
+                input_val_format = serie.yVal.numRef.numCache.formatCode
+                input_val_format = None if input_val_format == "General" else input_val_format
 
             else:
-                if series.cat:
+                if serie.cat:
                     # if no category data in the sequence, use the one that was set for the previous sequence
-                    if series.cat.strRef:
-                        input_cat_range = series.cat.strRef.f
-                    elif series.cat.numRef:
-                        input_cat_range = series.cat.numRef.f
-                        input_cat_format = series.cat.numRef.numCache.formatCode
+                    if serie.cat.strRef:
+                        input_cat_range = serie.cat.strRef.f
+                        input_cat_format = None
+                    elif serie.cat.numRef:
+                        input_cat_range = serie.cat.numRef.f
+                        input_cat_format = serie.cat.numRef.numCache.formatCode
+                        input_cat_format = None if input_cat_format == "General" else input_cat_format
 
-                input_val_range = series.val.numRef.f
-                input_val_format = series.val.numRef.numCache.formatCode
+                input_val_range = serie.val.numRef.f
+                input_val_format = serie.val.numRef.numCache.formatCode
+                input_val_format = None if input_val_format == "General" else input_val_format
 
-            input_cat_format = None if input_cat_format == "General" else input_cat_format
-            input_val_format = None if input_val_format == "General" else input_val_format
+            chart_sheet_name = input_cat_range.replace('(', '').replace(')', '').replace("'", "").split(sep="!")[0]
 
-            # category_axis_data
-            chart_sheet_name = (
-                input_cat_range
-                .replace("(", "")
-                .replace(")", "")
-                .replace("'", "")
-                .split(sep="!")[0]
-            )
-            chart_cat_range = (
-                input_cat_range
-                .replace('(', '')
-                .replace(')', '')
-                .replace("'", "")
-                .replace(f"{chart_sheet_name}!", "")
-                .replace('$', "")
-            )
-
-            cat_range_start = chart_cat_range.split(",")[0]
-            cat_range_end = chart_cat_range.split(",")[-1] if "," in chart_cat_range else chart_cat_range
+            chart_cat_range = input_cat_range.replace('(', '').replace(')', '').replace("'", "").replace(f"{chart_sheet_name}!", "").replace('$', "")
+            chart_cat_range = chart_cat_range.split(",")[0] + ":" + chart_cat_range.split(",")[-1] if "," in chart_cat_range else chart_cat_range
             cat_data = []
-            for element in wb[chart_sheet_name][f"{cat_range_start}:{cat_range_end}"]:
-                cat_data = [e.value for e in element if type(e) == Cell]
+            for element in wb[chart_sheet_name][chart_cat_range]:
+                for sub_element in element:
+                    if type(sub_element) == Cell:
+                        cat_data.append(sub_element.value)
 
-            # value_axis_data
-            chart_sheet_name = (
-                input_val_range
-                .replace('(', '')
-                .replace(')', '')
-                .replace("'", "")
-                .split(sep="!")[0]
-            )
-            chart_val_range = (
-                input_val_range
-                .replace('(', '')
-                .replace(')', '')
-                .replace("'", "")
-                .replace(f"{chart_sheet_name}!", "")
-            )
-            val_range_start = chart_val_range.split(",")[0]
-            val_range_end = chart_val_range.split(",")[-1] if "," in chart_val_range else chart_val_range
+            chart_sheet_name = input_val_range.replace('(', '').replace(')', '').replace("'", "").split(sep="!")[0]
+
+            chart_val_range = input_val_range.replace('(', '').replace(')', '').replace("'", "").replace(f"{chart_sheet_name}!", "")
+            chart_val_range = chart_val_range.split(",")[0] + ":" + chart_val_range.split(",")[-1] if "," in chart_val_range else chart_val_range
             val_data = []
-            for element in wb[chart_sheet_name][f"{val_range_start}:{val_range_end}"]:
-                val_data = [e.value for e in element if type(e) == Cell]
+            for element in wb[chart_sheet_name][chart_val_range]:
+                for sub_element in element:
+                    if type(sub_element) == Cell:
+                        val_data.append(sub_element.value)
 
-            series_name = series.tx.v if series.tx else None
+            series_name = serie.tx.v if serie.tx else None
             ser = {
                 "category_axis_data": cat_data,
                 "value_axis_data": val_data,
