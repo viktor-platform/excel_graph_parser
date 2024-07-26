@@ -3,12 +3,10 @@ All notable changes to this project will be documented in this file.
 
 ## (Unreleased) (dd/mm/yyyy)
 ### Added
-- ExcelChartParser
 
 ### Changed
 
 ### Deprecated
-- ExcelImageParser will be replaced by ExcelChartParser
 
 ### Removed
 
@@ -17,6 +15,13 @@ All notable changes to this project will be documented in this file.
 ### Security
 
 ### Internal
+
+## v0.2.0 (26/07/2024)
+### Added
+- ExcelChartParser
+
+### Deprecated
+- ExcelImageParser will be replaced by ExcelChartParser
 
 ## v0.1.9 (23/04/2024)
 ### Changed
