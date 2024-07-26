@@ -5,15 +5,6 @@ Currently only useful for [VIKTOR](https://www.viktor.ai) applications.
 # Installation
 Paste the link of this repository in your `requirements.txt`:
 ```text
-viktor==14.9.0
+viktor
 excel-graph-parser
-```
-
-# Contributing
-Improvements to the view are very welcome. Please ensure your improvements adhere to the code standards by running 
-black, isort and pylint (with the versions specified in `dev-requirements.txt`):
-```shell
-python -m black viktor_table_view/;
-python -m isort viktor_table_view/;
-python -m pylint viktor_table_view/ --rcfile=pyproject.toml;
 ```
