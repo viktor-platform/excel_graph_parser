@@ -5,18 +5,23 @@ All notable changes to this project will be documented in this file.
 ### Added
 
 ### Changed
-- Update VIKTOR to v14.16.1
 
 ### Deprecated
 
 ### Removed
 
 ### Fixed
-- Fix parsing of charts without X-data (fall back to index)
 
 ### Security
 
 ### Internal
+
+## v0.2.1 (21/10/2024)
+### Changed
+- Update VIKTOR to v14.16.1
+
+### Fixed
+- Fix parsing of charts without X-data (fall back to index)
 
 ## v0.2.0 (26/07/2024)
 ### Added
