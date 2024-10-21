@@ -1,3 +1,3 @@
-viktor==14.9.0
+viktor==14.16.1
 openpyxl~=3.1.1
 plotly==5.18.0
