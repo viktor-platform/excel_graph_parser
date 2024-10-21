@@ -93,13 +93,14 @@ class ExcelChartParser:
                 y_axis_title = chart.y_axis.title.tx.rich.p[0].r[-1].t
 
         # Get series data
+        input_cat_range = None
+        input_cat_format = None
         series = []
         for serie in chart.series:
             if chart_type == "scatterChart":
                 if serie.xVal:
                     if serie.xVal.strRef:
                         input_cat_range = serie.xVal.strRef.f
-                        input_cat_format = None
                     elif serie.xVal.numRef:
                         input_cat_range = serie.xVal.numRef.f
                         input_cat_format = serie.xVal.numRef.numCache.formatCode
@@ -114,7 +115,6 @@ class ExcelChartParser:
                     # if no category data in the sequence, use the one that was set for the previous sequence
                     if serie.cat.strRef:
                         input_cat_range = serie.cat.strRef.f
-                        input_cat_format = None
                     elif serie.cat.numRef:
                         input_cat_range = serie.cat.numRef.f
                         input_cat_format = serie.cat.numRef.numCache.formatCode
@@ -124,18 +124,8 @@ class ExcelChartParser:
                 input_val_format = serie.val.numRef.numCache.formatCode
                 input_val_format = None if input_val_format == "General" else input_val_format
 
-            chart_sheet_name = input_cat_range.replace('(', '').replace(')', '').replace("'", "").split(sep="!")[0]
-
-            chart_cat_range = input_cat_range.replace('(', '').replace(')', '').replace("'", "").replace(f"{chart_sheet_name}!", "").replace('$', "")
-            chart_cat_range = chart_cat_range.split(",")[0] + ":" + chart_cat_range.split(",")[-1] if "," in chart_cat_range else chart_cat_range
-            cat_data = []
-            for element in wb[chart_sheet_name][chart_cat_range]:
-                for sub_element in element:
-                    if type(sub_element) == Cell:
-                        cat_data.append(sub_element.value)
-
+            # collect Y data
             chart_sheet_name = input_val_range.replace('(', '').replace(')', '').replace("'", "").split(sep="!")[0]
-
             chart_val_range = input_val_range.replace('(', '').replace(')', '').replace("'", "").replace(f"{chart_sheet_name}!", "")
             chart_val_range = chart_val_range.split(",")[0] + ":" + chart_val_range.split(",")[-1] if "," in chart_val_range else chart_val_range
             val_data = []
@@ -144,13 +134,25 @@ class ExcelChartParser:
                     if type(sub_element) == Cell:
                         val_data.append(sub_element.value)
 
-            series_name = serie.tx.v if serie.tx else None
+            # collect X data
+            if input_cat_range is None:  # no categories, fall back to index
+                cat_data = list(range(1, len(val_data) + 1))
+            else:
+                cat_data = []
+                chart_sheet_name = input_cat_range.replace('(', '').replace(')', '').replace("'", "").split(sep="!")[0]
+                chart_cat_range = input_cat_range.replace('(', '').replace(')', '').replace("'", "").replace(f"{chart_sheet_name}!", "").replace('$', "")
+                chart_cat_range = chart_cat_range.split(",")[0] + ":" + chart_cat_range.split(",")[-1] if "," in chart_cat_range else chart_cat_range
+                for element in wb[chart_sheet_name][chart_cat_range]:
+                    for sub_element in element:
+                        if type(sub_element) == Cell:
+                            cat_data.append(sub_element.value)
+
             ser = {
                 "category_axis_data": cat_data,
                 "value_axis_data": val_data,
                 "category_value_format": input_cat_format,
                 "values_value_format": input_val_format,
-                "series_name": series_name if series_name else None
+                "series_name": serie.tx.v if serie.tx else None,
             }
             series.append(ser)
 
